@@ -72,10 +72,10 @@ train_prodcat <- reg_data_prodcat |> filter(ym <  yearmonth("2015 Nov"))
 # Shop models ----
 models_shop <- train_shop |>
 	model(
-		naive = NAIVE(qty),
-		ets   = ETS(qty ~ trend("A")  + season("A")),
-		arima = ARIMA(qty),
-		sarimax = ARIMA(qty ~ 
+		shop_naive = NAIVE(qty),
+		shop_ets   = ETS(qty ~ trend("A")  + season("A")),
+		shop_arima = ARIMA(qty),
+		shop_sarimax = ARIMA(qty ~ 
 		  price_mean_complement_prod_1_pclag1 +
 	    price_mean_complement_prod_2_pclag1 +
 	    price_mean_complement_prod_3_pclag1 +
@@ -106,25 +106,29 @@ test_shop_pred <- test_shop |> as.data.frame() |>
    by = c("shop_id", "ym"),
    keep = FALSE
  ) |> mutate(
-   shop_factor_naive   = naive   / qty_lag1,
-   shop_factor_ets     = ets     / qty_lag1,
-   shop_factor_arima   = arima   / qty_lag1,
-   shop_factor_sarimax = sarimax / qty_lag1
+   shop_factor_naive   = shop_naive   / qty_lag1,
+   shop_factor_ets     = shop_ets     / qty_lag1,
+   shop_factor_arima   = shop_arima   / qty_lag1,
+   shop_factor_sarimax = shop_sarimax / qty_lag1
  ) |> mutate(
-   shop_factor_naive   = ifelse(is.na(shop_factor_naive), 1, shop_factor_naive),
-   shop_factor_ets     = ifelse(is.na(shop_factor_ets), 1, shop_factor_ets),
-   shop_factor_arima   = ifelse(is.na(shop_factor_arima), 1, shop_factor_arima),
-   shop_factor_sarimax = ifelse(is.na(shop_factor_sarimax), 1, shop_factor_sarimax)
- ) |>  select(-c(qty_lag1, naive, ets, arima, sarimax))
+   shop_factor_naive   = ifelse(!is.finite(shop_factor_naive), 1, shop_factor_naive),
+   shop_factor_ets     = ifelse(!is.finite(shop_factor_ets), 1, shop_factor_ets),
+   shop_factor_arima   = ifelse(!is.finite(shop_factor_arima), 1, shop_factor_arima),
+   shop_factor_sarimax = ifelse(!is.finite(shop_factor_sarimax), 1, shop_factor_sarimax),
+   shop_naive          = ifelse(!is.finite(shop_naive), 0, shop_naive),
+   shop_ets            = ifelse(!is.finite(shop_ets), 0, shop_ets),
+   shop_arima          = ifelse(!is.finite(shop_arima), 0, shop_arima),
+   shop_sarimax        = ifelse(!is.finite(shop_sarimax), 0, shop_sarimax)
+ ) |>  select(-c(qty_lag1))
  
  
 # Prodcat models ----
 models_prodcat <- train_prodcat |>
   model(
-    naive = NAIVE(qty),
-    ets   = ETS(qty ~ trend("A")  + season("A")),
-    arima = ARIMA(qty),
-    sarimax = ARIMA(qty ~ 
+    prodcat_naive = NAIVE(qty),
+    prodcat_ets   = ETS(qty ~ trend("A")  + season("A")),
+    prodcat_arima = ARIMA(qty),
+    prodcat_sarimax = ARIMA(qty ~ 
       price_mean_complement_prod_1_pclag1 +
       price_mean_complement_prod_2_pclag1 +
       price_mean_complement_prod_3_pclag1 +
@@ -155,16 +159,20 @@ test_prodcat_pred <- test_prodcat |> as.data.frame() |>
     by = c("item_category_id", "ym"),
     keep = FALSE
   ) |> mutate(
-    prodcat_factor_naive   = naive   / qty_lag1,
-    prodcat_factor_ets     = ets     / qty_lag1,
-    prodcat_factor_arima   = arima   / qty_lag1,
-    prodcat_factor_sarimax = sarimax / qty_lag1
+    prodcat_factor_naive   = prodcat_naive   / qty_lag1,
+    prodcat_factor_ets     = prodcat_ets     / qty_lag1,
+    prodcat_factor_arima   = prodcat_arima   / qty_lag1,
+    prodcat_factor_sarimax = prodcat_sarimax / qty_lag1
   ) |> mutate(
-    prodcat_factor_naive   = ifelse(is.na(prodcat_factor_naive), 1, prodcat_factor_naive),
-    prodcat_factor_ets     = ifelse(is.na(prodcat_factor_ets), 1, prodcat_factor_ets),
-    prodcat_factor_arima   = ifelse(is.na(prodcat_factor_arima), 1, prodcat_factor_arima),
-    prodcat_factor_sarimax = ifelse(is.na(prodcat_factor_sarimax), 1, prodcat_factor_sarimax)
-  ) |>  select(-c(qty_lag1, naive, ets, arima, sarimax))
+    prodcat_factor_naive   = ifelse(!is.finite(prodcat_factor_naive), 1, prodcat_factor_naive),
+    prodcat_factor_ets     = ifelse(!is.finite(prodcat_factor_ets), 1, prodcat_factor_ets),
+    prodcat_factor_arima   = ifelse(!is.finite(prodcat_factor_arima), 1, prodcat_factor_arima),
+    prodcat_factor_sarimax = ifelse(!is.finite(prodcat_factor_sarimax), 1, prodcat_factor_sarimax),
+    prodcat_naive          = ifelse(!is.finite(prodcat_naive), 0, prodcat_naive),
+    prodcat_ets            = ifelse(!is.finite(prodcat_ets), 0, prodcat_ets),
+    prodcat_arima          = ifelse(!is.finite(prodcat_arima), 0, prodcat_arima),
+    prodcat_sarimax        = ifelse(!is.finite(prodcat_sarimax), 0, prodcat_sarimax)
+  ) |>  select(-c(qty_lag1))
 
 
 test_shop_pred <- test_shop_pred |> as.data.frame() |>
@@ -173,7 +181,7 @@ test_prodcat_pred <- test_prodcat_pred |> as.data.frame() |>
   mutate(ym = as.numeric(ym))
 
 # Joining back to full data ----
-predictions <- reg_data[reg_data$ym == 550] |>
+predictions <- reg_data[reg_data$ym == 550,] |>
   left_join(
     test_shop_pred, by = c("shop_id", "ym"), keep = FALSE
   ) |> 
@@ -189,6 +197,16 @@ predictions <- reg_data[reg_data$ym == 550] |>
     prodcat_factor_ets     = ifelse(is.na(prodcat_factor_ets), 1, prodcat_factor_ets),
     prodcat_factor_arima   = ifelse(is.na(prodcat_factor_arima), 1, prodcat_factor_arima),
     prodcat_factor_sarimax = ifelse(is.na(prodcat_factor_sarimax), 1, prodcat_factor_sarimax)
+  ) |>
+  mutate(
+    shop_naive      = ifelse(is.na(shop_naive), 0, shop_naive),
+    shop_ets        = ifelse(is.na(shop_ets), 0, shop_ets),
+    shop_arima      = ifelse(is.na(shop_arima), 0, shop_arima),
+    shop_sarimax    = ifelse(is.na(shop_sarimax), 0, shop_sarimax),
+    prodcat_naive   = ifelse(is.na(prodcat_naive), 0, prodcat_naive),
+    prodcat_ets     = ifelse(is.na(prodcat_ets), 0, prodcat_ets),
+    prodcat_arima   = ifelse(is.na(prodcat_arima), 0, prodcat_arima),
+    prodcat_sarimax = ifelse(is.na(prodcat_sarimax), 0, prodcat_sarimax)
   )
 
 
@@ -197,7 +215,32 @@ predictions <- predictions |> mutate(
   item_cnt_month_ets     = qty_lag1 * shop_factor_ets * prodcat_factor_ets,
   item_cnt_month_arima   = qty_lag1 * shop_factor_arima * prodcat_factor_arima,
   item_cnt_month_sarimax = qty_lag1 * shop_factor_sarimax * prodcat_factor_sarimax
-  ) |> mutate(
+  ) 
+
+# For brand new products, we will predict the average of the shop and prodcat predictions
+predictions <- predictions |> mutate(
+  item_cnt_month_naive   = ifelse(brand_new == 1 & new_item_category == 0, 
+    (shop_naive + prodcat_naive) / 2, item_cnt_month_naive),
+  item_cnt_month_ets     = ifelse(brand_new == 1 & new_item_category == 0,
+    (shop_ets + prodcat_ets) / 2, item_cnt_month_ets),
+  item_cnt_month_arima   = ifelse(brand_new == 1 & new_item_category == 0,
+    (shop_arima + prodcat_arima) / 2, item_cnt_month_arima),
+  item_cnt_month_sarimax = ifelse(brand_new == 1 & new_item_category == 0,
+    (shop_sarimax + prodcat_sarimax) / 2, item_cnt_month_sarimax)
+) |> mutate(
+  # For new categories we just use the shop prediction
+  item_cnt_month_naive   = ifelse(brand_new == 1 & new_item_category == 1, 
+    shop_naive, item_cnt_month_naive),
+  item_cnt_month_ets     = ifelse(brand_new == 1 & new_item_category == 1,
+    shop_ets, item_cnt_month_ets),
+  item_cnt_month_arima   = ifelse(brand_new == 1 & new_item_category == 1,
+    shop_arima, item_cnt_month_arima),
+  item_cnt_month_sarimax = ifelse(brand_new == 1 & new_item_category == 1,
+    shop_sarimax, item_cnt_month_sarimax)
+)
+
+# Now we can clip the predictions
+predictions <- predictions |> mutate(
     item_cnt_month_naive = ifelse(
       item_cnt_month_naive < 0, 0, ifelse(
         item_cnt_month_naive > 20, 20, item_cnt_month_naive)),
@@ -214,29 +257,21 @@ predictions <- predictions |> mutate(
   select(ID, qty_lag1, item_cnt_month_naive, item_cnt_month_ets,
          item_cnt_month_arima, item_cnt_month_sarimax)
 
+# Now export the predictions
+exp_naive = predictions |>
+  select(ID, item_cnt_month_naive) |>
+  rename(item_cnt_month = item_cnt_month_naive)
+exp_ets = predictions |>
+  select(ID, item_cnt_month_ets) |>
+  rename(item_cnt_month = item_cnt_month_ets)
+exp_arima = predictions |>
+  select(ID, item_cnt_month_arima) |>
+  rename(item_cnt_month = item_cnt_month_arima)
+exp_sarimax = predictions |>
+  select(ID, item_cnt_month_sarimax) |>
+  rename(item_cnt_month = item_cnt_month_sarimax)
 
-
-# Calculate RMSE for each model
-rmse_shop <- test_shop_pred |>
-  mutate(
-    se_naive   = (qty - naive)^2,
-    se_ets     = (qty - ets)^2,
-    se_arima   = (qty - arima)^2,
-    se_sarimax = (qty - sarimax)^2
-  ) |>
-  select(shop_id, ym, qty, qty_lag1, starts_with("se")) |>
-  summarise(
-    rmse_naive   = sqrt(mean(se_naive)),
-    rmse_ets     = sqrt(mean(se_ets)),
-    rmse_arima   = sqrt(mean(se_arima)),
-    rmse_sarimax = sqrt(mean(se_sarimax))
-  )
-
-forecasts_prodcat <- models_prodcat |>
-  forecast(new_data = test_prodcat)
-
-
-forecasts_prodcat <- forecasts_prodcat |>
-  mutate(.mean = ifelse(is.na(.mean), 0, .mean))
-
-
+write_csv(exp_naive, here("../output/predictions_naive_202505091536.csv"))
+write_csv(exp_ets, here("../output/predictions_ets_202505091536.csv"))
+write_csv(exp_arima, here("../output/predictions_arima_202505091536.csv"))
+write_csv(exp_sarimax, here("../output/predictions_sarimax_202505091536.csv"))
