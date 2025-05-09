@@ -4,7 +4,28 @@ library(tsibble)
 library(here)
 
 # Load the tables
-load(here("../data/data_final.RData"))
+reg_data <- read_csv(here("../data/reg_data.csv"))
+
+# We need to aggregate the data because it's so large.
+reg_data <- reg_data |> as.data.table()
+
+reg_data_long <- reg_data |>
+  pivot_longer(
+    cols = -c("ID", "shop_id", "item_id", "item_category_id", "ym"),
+    names_to = "var", values_to = "val"
+  )
+
+reg_data_shop <- reg_data_long |> 
+  group_by(shop_id, ym, var) |> 
+  summarise(
+    mean = mean(val),
+  ) |>
+  pivot_wider(
+    names_from = var,
+    values_from = mean
+  )
+
+
 
 # Declare tsibble
 data <- data_final |> as.data.frame() |> 
