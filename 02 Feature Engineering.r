@@ -317,6 +317,7 @@ dfsave <- data_final
 data_final <- dfsave
 
 ## Own ID lags
+# The commented-out variables are ones that I tried in previous iterations, but did not improve model performance.
 data_final <- data_final |> calculate_lags(qty, 1:6)
 data_final <- data_final |> calculate_lags(qty_roll3, 1:3)
 data_final <- data_final |> calculate_lags(qty_roll6, 1:3)
@@ -400,18 +401,4 @@ data_final <- data_final |>
 
 data_final$ym <- as.numeric(data_final$ym)
 
-# For zero records, we only need to save the last month of data. Don't care abt the other records because we're not using them for estimation
-#write_csv(data_final, here("../data/reg_data_balanced.csv"), )
-
-# Now we can remove months with 0 sales and add a field for "months since last sale"
-#data_final0 <- data_final[data_final$qty > 0 | data_final$ym == 550 | data_final$ym == 516,] |> 
-#	mutate(
-#		months_since_last_sale = ym - lag(ym),
-#		months_since_last_sale = ifelse(is.na(months_since_last_sale), 0, months_since_last_sale),
-#	)
-
-#data_final0 <- data_final0[data_final0$qty > 0 | data_final0$ym == 550,]
-
-
-#write_csv(data_final0, here("../data/reg_data.csv"), )
 write_csv(data_final, here("../data/reg_data.csv"), )
